@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#1d2a36">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Straßenbeleuchtung Bakum</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{--dark:#1d2a36;--dark2:#2b3a48;--acc:#ffd43b;--ink:#1d2a36;--bg:#fff;--line:#d5dbe1;--red:#e03131}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0;height:100%;font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);overflow:hidden}
+body{display:flex;flex-direction:column;height:100dvh}
+header{background:var(--dark);color:#fff;display:flex;align-items:center;gap:10px;padding:calc(8px + env(safe-area-inset-top)) 12px 8px}
+header h1{font-size:17px;margin:0;flex:1;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header h1 span{color:var(--acc)}
+#count{font-size:13px;opacity:.8;white-space:nowrap}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px;min-height:44px;padding:0 14px;background:#e9ecef;color:var(--ink)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--acc);outline-offset:1px}
+#menuBtn{background:var(--dark2);color:#fff;font-size:20px;padding:0 14px}
+#map{flex:1;background:#e5e3df}
+#map.crosshair{cursor:crosshair}
+.nomap{padding:40px 24px;text-align:center;font-size:16px;line-height:1.5;color:var(--ink)}
+#bar{position:absolute;left:8px;right:8px;top:calc(64px + env(safe-area-inset-top));z-index:900;background:var(--dark);color:#fff;border-radius:12px;padding:8px 8px 8px 14px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;box-shadow:0 4px 14px rgba(0,0,0,.3)}
+#bar[hidden]{display:none}
+#barTxt{flex:1 1 160px;font-size:14px}
+#bar button{min-height:40px;padding:0 12px;background:var(--dark2);color:#fff}
+#bar #bDone{background:var(--acc);color:var(--dark);font-weight:700}
+#tools{display:flex;background:var(--dark);padding:6px 4px calc(6px + env(safe-area-inset-bottom));gap:4px}
+#tools button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:transparent;color:#cfd6dd;font-size:12px;min-height:58px;padding:4px 2px}
+#tools button.on{background:var(--dark2);color:#fff;box-shadow:inset 0 -3px 0 var(--acc)}
+.ti{height:22px;display:flex;align-items:center;justify-content:center}
+#gps{position:absolute;right:10px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:800;width:48px;height:48px;padding:0;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center}
+/* Symbole */
+.ico{width:22px;height:22px;border:2px solid var(--dark);box-shadow:0 1px 4px rgba(0,0,0,.45);margin:2px}
+.ico.leuchte{border-radius:50%;background:radial-gradient(circle at 50% 50%,#fff 0 3px,var(--acc) 4px)}
+.ico.verteiler{border-radius:4px;background:#495057;position:relative}
+.ico.verteiler::after{content:"";position:absolute;left:4px;right:4px;top:7px;height:4px;background:var(--acc)}
+.ico.muffe{width:16px;height:16px;margin:5px;transform:rotate(45deg);background:var(--red)}
+.hdl{width:20px;height:20px;border-radius:50%;background:#fff;border:3px solid var(--dark);box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.leaflet-tooltip.lbl{background:#fff;border:1px solid var(--dark);border-radius:6px;padding:1px 6px;font-size:12px;font-weight:700;color:var(--dark);box-shadow:none}
+.leaflet-tooltip.lbl::before{display:none}
+/* Sheet & Menü */
+.panel{position:fixed;z-index:1000;background:var(--bg);box-shadow:0 -6px 24px rgba(0,0,0,.3);display:flex;flex-direction:column}
+.panel[hidden]{display:none}
+#sheet{left:0;right:0;bottom:0;max-height:75dvh;border-radius:16px 16px 0 0;padding-bottom:env(safe-area-inset-bottom)}
+#menu{top:0;right:0;bottom:0;width:min(380px,92vw);padding-top:env(safe-area-inset-top)}
+.ph{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.ph b{flex:1;font-size:17px}
+.pb{overflow-y:auto;padding:12px 14px 16px;flex:1}
+label{display:block;font-size:13px;font-weight:600;color:#495057;margin-bottom:10px}
+input:not([type=checkbox]),select,textarea{display:block;width:100%;margin-top:4px;font:16px system-ui,sans-serif;padding:10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+.chk{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:500;color:var(--ink);min-height:40px;margin:0}
+.chk input{width:20px;height:20px}
+.meta{font-size:13px;color:#495057;margin:4px 0 12px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row>*{flex:1 1 120px}
+.prim{background:var(--dark);color:#fff;font-weight:700}
+.danger{background:#fff0f0;color:var(--red)}
+.danger.arm{background:var(--red);color:#fff}
+.btn{display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:10px;background:#e9ecef;color:var(--ink);font-size:16px;font-weight:400;margin:0;cursor:pointer}
+h3{font-size:13px;margin:16px 0 6px;color:#495057;font-weight:700}
+#list{list-style:none;margin:8px 0 0;padding:0}
+#list li{display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid #eef0f2;cursor:pointer;min-height:48px}
+#list li .ico{flex:none;transform-origin:center}
+#list li .ico.muffe{transform:rotate(45deg)}
+#list li div{flex:1}
+#list small{display:block;color:#6c757d;font-size:12px}
+.empty{color:#6c757d;font-size:14px;padding:10px 0}
+.small{font-size:12px;color:#6c757d;margin-top:14px}
+#toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--dark);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:1200;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;text-align:center}
+#toast.show{opacity:1}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Straßenbeleuchtung <span>Bakum</span></h1>
+  <span id="count"></span>
+  <button id="menuBtn" aria-label="Übersicht und Einstellungen">☰</button>
+</header>
+
+<div id="map"><div class="nomap"><b>Karte startet nicht?</b><br>Die Datei muss in <b>Chrome</b> geöffnet werden. In der Vorschau der Dateien-App oder im HTML-Viewer funktioniert sie nicht.</div></div>
+
+<div id="bar" hidden>
+  <span id="barTxt"></span>
+  <button id="bUndo">Zurück</button>
+  <button id="bCancel">Abbrechen</button>
+  <button id="bDone">Fertig</button>
+</div>
+
+<button id="gps" aria-label="Mein Standort">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1d2a36" stroke-width="2.2"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="#1d2a36"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg>
+</button>
+
+<nav id="tools">
+  <button data-mode="view" class="on"><span class="ti"><svg width="20" height="20" viewBox="0 0 24 24" fill="#cfd6dd"><path d="M5 3l14 8-6 1.5L10 19z"/></svg></span>Ansehen</button>
+  <button data-mode="leuchte"><span class="ti"><span class="ico leuchte" style="width:18px;height:18px"></span></span>Leuchte</button>
+  <button data-mode="verteiler"><span class="ti"><span class="ico verteiler" style="width:18px;height:18px"></span></span>Verteiler</button>
+  <button data-mode="muffe"><span class="ti"><span class="ico muffe" style="width:13px;height:13px"></span></span>Muffe</button>
+  <button data-mode="leitung"><span class="ti"><svg width="26" height="20" viewBox="0 0 26 20"><path d="M2 16L10 6l7 7 7-10" fill="none" stroke="#e8590c" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Leitung</button>
+</nav>
+
+<section id="sheet" class="panel" hidden>
+  <div class="ph"><b id="shTitle"></b><button id="shClose" aria-label="Schließen">✕</button></div>
+  <div class="pb">
+    <div id="shBody"></div>
+    <div class="row">
+      <button id="shSave" class="prim">Fertig</button>
+      <button id="shMove">Position ändern</button>
+    </div>
+    <div class="row" style="margin-top:8px"><button id="shDel" class="danger">Löschen</button></div>
+  </div>
+</section>
+
+<aside id="menu" class="panel" hidden>
+  <div class="ph"><b>Übersicht</b><button id="mClose" aria-label="Schließen">✕</button></div>
+  <div class="pb">
+    <h3>Anzeigen</h3>
+    <div id="vis"></div>
+    <label class="chk"><input type="checkbox" id="lblT"> Beschriftungen immer anzeigen</label>
+    <h3>Objekte</h3>
+    <input id="q" type="search" placeholder="Suchen: Name, Kabel, Notiz …">
+    <ul id="list"></ul>
+    <button id="install" class="prim" style="width:100%;margin-bottom:6px" hidden>App installieren</button>
+    <h3>Bestand aus OpenStreetMap</h3>
+    <button id="osmLoad" class="prim" style="width:100%">Leuchten &amp; Verteiler für Bakum laden</button>
+    <p class="small" style="margin-top:6px">Übernimmt alle in OpenStreetMap eingetragenen Straßenleuchten und Strom-Verteilerschränke im Gebiet Bakum. Bereits übernommene werden übersprungen. Nicht jede Leuchte ist dort eingetragen.</p>
+    <h3>Daten sichern &amp; teilen</h3>
+    <div class="row">
+      <button id="exp">Exportieren</button>
+      <label class="btn">Importieren<input type="file" id="imp" accept=".geojson,.json,application/json,application/geo+json" hidden></label>
+    </div>
+    <p class="small">Die Einträge werden nur auf diesem Gerät im Browser gespeichert. Exportiere regelmäßig eine Sicherung (GeoJSON-Datei). Die Datei kannst du an Kollegen schicken, die sie hier importieren, oder in QGIS öffnen.</p>
+    <div class="row" style="margin-top:14px"><button id="wipe" class="danger">Alles löschen</button></div>
+    <p class="small">Karte: © OpenStreetMap-Mitwirkende · Luftbild: © Esri</p>
+  </div>
+</aside>
+
+<div id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+{
+const $ = s => document.querySelector(s);
+if (!window.L){
+  $('#map').innerHTML = '<div class="nomap"><b>Die Karte konnte nicht geladen werden.</b><br>Bitte prüfe die Internetverbindung und öffne die Datei direkt in <b>Chrome</b> (nicht in der Vorschau der Dateien-App).</div>';
+  throw new Error('Leaflet nicht geladen');
+}
+const KEY = 'bakum-sb-v1', VKEY = 'bakum-sb-view', LKEY = 'bakum-sb-labels';
+const KINDS = {
+  leuchte:   {label:'Leuchte',   pre:'L'},
+  verteiler: {label:'Verteiler', pre:'V'},
+  muffe:     {label:'Muffe',     pre:'M'},
+  leitung:   {label:'Leitung',   pre:'K'}
+};
+const FIELDS = {
+  leuchte:   [['mast','Mast / Lichtpunkthöhe'], ['lampe','Leuchte / Leuchtmittel / Watt'], ['strang','Stromkreis / Abgang']],
+  verteiler: [['typ','Typ / Standort'], ['abg','Abgänge / Sicherungen'], ['zaehler','Zähler-Nr.']],
+  muffe:     [['art','Muffenart (Verbindung, Abzweig …)'], ['tiefe','Tiefe (cm)']],
+  leitung:   [['kabel','Kabeltyp (z. B. NYY-J 4×16)'], ['art','Verlegung', ['Erdkabel','Leerrohr','Freileitung']], ['strang','Stromkreis / Abgang']]
+};
+const COLORS = {Erdkabel:'#e8590c', Leerrohr:'#7048e8', Freileitung:'#1c7ed6'};
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const len = pts => { let d = 0; for (let i = 1; i < pts.length; i++) d += L.latLng(pts[i-1]).distanceTo(pts[i]); return d; };
+const fmtLen = m => m < 1000 ? Math.round(m) + ' m' : (m/1000).toFixed(2).replace('.', ',') + ' km';
+const ls = {
+  get(k, d){ try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch(e){ return d; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch(e){ return false; } }
+};
+
+let toastT;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2600); }
+
+let items = ls.get(KEY, []);
+if (!Array.isArray(items)) items = [];
+let showLabels = ls.get(LKEY, true);
+function save(){ if (!ls.set(KEY, items)) toast('Speichern im Browser nicht möglich – bitte exportieren!'); updateCount(); }
+
+/* ---------- Karte ---------- */
+const view = ls.get(VKEY, {c:[52.7406, 8.1931], z:15});
+$('#map').innerHTML = '';
+const map = L.map('map', {zoomControl:false, tap:true}).setView(view.c, view.z);
+L.control.zoom({position:'topright'}).addTo(map);
+const bases = [
+  ['Straßenkarte', L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {maxZoom:19, attribution:'Karte © Esri'})],
+  ['Luftbild', L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:19, attribution:'Luftbild © Esri'})],
+  ['OpenStreetMap', L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap-Mitwirkende'})]
+];
+let baseIdx = 0, tileOk = 0, tileErr = 0;
+bases.forEach(([name, layer], i) => {
+  layer.on('tileload', () => { if (i === baseIdx) tileOk++; });
+  layer.on('tileerror', () => {
+    if (i !== baseIdx) return;
+    tileErr++;
+    if (tileOk === 0 && tileErr >= 6 && baseIdx < bases.length - 1){
+      map.removeLayer(layer); baseIdx++; tileOk = tileErr = 0;
+      map.addLayer(bases[baseIdx][1]);
+      toast('Karte lädt nicht – wechsle zu „' + bases[baseIdx][0] + '“');
+    }
+  });
+});
+map.on('baselayerchange', e => { baseIdx = bases.findIndex(b => b[1] === e.layer); tileOk = tileErr = 0; });
+bases[0][1].addTo(map);
+L.control.layers(Object.fromEntries(bases), null, {position:'topright'}).addTo(map);
+if (!navigator.onLine) toast('Kein Internet – die Karte braucht eine Verbindung');
+L.control.scale({imperial:false, position:'bottomleft'}).addTo(map);
+map.on('moveend', () => { const c = map.getCenter(); ls.set(VKEY, {c:[c.lat, c.lng], z:map.getZoom()}); });
+
+const groups = {};
+for (const k in KINDS) groups[k] = L.layerGroup().addTo(map);
+const layers = new Map();
+
+function icon(kind){ return L.divIcon({className:'', html:`<div class="ico ${kind}"></div>`, iconSize:[30,30], iconAnchor:[15,15]}); }
+function labelOf(it){ return it.name + (it.kind === 'leitung' && it.f.kabel ? ' · ' + it.f.kabel : ''); }
+
+function unrender(id){ const o = layers.get(id); if (o){ groups[o.kind].removeLayer(o.lay); layers.delete(id); } }
+function render(it){
+  unrender(it.id);
+  let lay;
+  const tt = {permanent:showLabels, className:'lbl'};
+  if (it.kind === 'leitung'){
+    const art = it.f.art || 'Erdkabel';
+    const vis = L.polyline(it.pts, {color:COLORS[art] || COLORS.Erdkabel, weight:5, opacity:.95, dashArray: art === 'Leerrohr' ? '10 7' : null, interactive:false});
+    const hit = L.polyline(it.pts, {weight:24, opacity:0, bubblingMouseEvents:false});
+    hit.bindTooltip(esc(labelOf(it)), {...tt, direction:'center', sticky:false});
+    hit.on('click', e => onItemTap(it, [e.latlng.lat, e.latlng.lng]));
+    lay = L.featureGroup([vis, hit]);
+  } else {
+    lay = L.marker(it.pt, {icon:icon(it.kind)});
+    lay.bindTooltip(esc(labelOf(it)), {...tt, direction:'right', offset:[12, 0]});
+    lay.on('click', () => onItemTap(it, it.pt));
+  }
+  groups[it.kind].addLayer(lay);
+  layers.set(it.id, {lay, kind:it.kind});
+}
+function renderAll(){ items.forEach(render); }
+
+function updateCount(){
+  const n = k => items.filter(i => i.kind === k).length;
+  const m = items.filter(i => i.kind === 'leitung').reduce((s, i) => s + len(i.pts), 0);
+  $('#count').textContent = `${n('leuchte')} L · ${n('verteiler')} V · ${fmtLen(m)}`;
+}
+
+function nextName(kind){
+  const pre = KINDS[kind].pre, re = new RegExp('^' + pre + '-(\\d+)$');
+  let max = 0;
+  items.forEach(i => { const m = re.exec(i.name || ''); if (m) max = Math.max(max, +m[1]); });
+  return pre + '-' + String(max + 1).padStart(3, '0');
+}
+
+/* ---------- Modi ---------- */
+let mode = 'view';
+function setMode(m){
+  if (mode === 'leitung' && m !== 'leitung') clearDraft();
+  mode = m;
+  document.querySelectorAll('#tools button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+  $('#map').classList.toggle('crosshair', m !== 'view' && m !== 'move');
+  const bar = $('#bar');
+  if (m === 'view'){ bar.hidden = true; return; }
+  bar.hidden = false;
+  $('#bUndo').hidden = m !== 'leitung';
+  $('#bDone').hidden = !(m === 'leitung' || m === 'move');
+  $('#bCancel').textContent = m === 'move' ? 'Abbrechen' : (m === 'leitung' ? 'Abbrechen' : 'Beenden');
+  if (m === 'leitung') drawDraft();
+  else if (m === 'move') $('#barTxt').textContent = 'Symbol bzw. Punkte ziehen, dann „Fertig“';
+  else $('#barTxt').textContent = `Auf die Karte tippen, um eine ${KINDS[m].label} zu setzen`;
+}
+document.querySelectorAll('#tools button').forEach(b => b.addEventListener('click', () => {
+  if (mode === 'move') cancelMove();
+  closeSheet();
+  setMode(b.dataset.mode);
+}));
+
+map.on('click', e => {
+  const p = [e.latlng.lat, e.latlng.lng];
+  if (mode === 'leitung'){ addDraft(p); return; }
+  if (KINDS[mode] && mode !== 'leitung'){
+    const it = {id:uid(), kind:mode, name:nextName(mode), f:{}, note:'', pt:p};
+    items.push(it); save(); render(it); openSheet(it, true);
+  }
+});
+
+function onItemTap(it, p){
+  if (mode === 'leitung'){ addDraft(p); return; } // einrasten
+  if (mode === 'move') return;
+  openSheet(it, false);
+}
+
+/* ---------- Leitung zeichnen ---------- */
+let draft = [], draftLine = null, draftDots = null;
+function addDraft(p){ draft.push([p[0], p[1]]); drawDraft(); }
+function drawDraft(){
+  if (!draftLine){
+    draftLine = L.polyline([], {color:'#ffd43b', weight:5, dashArray:'6 6', interactive:false}).addTo(map);
+    draftDots = L.layerGroup().addTo(map);
+  }
+  draftLine.setLatLngs(draft);
+  draftDots.clearLayers();
+  draft.forEach(p => L.circleMarker(p, {radius:6, color:'#1d2a36', weight:2, fillColor:'#ffd43b', fillOpacity:1, interactive:false}).addTo(draftDots));
+  $('#barTxt').textContent = draft.length
+    ? `${draft.length} Punkt${draft.length > 1 ? 'e' : ''} · ${fmtLen(len(draft))}`
+    : 'Start-, Knick- und Endpunkte tippen – auf Symbole tippen rastet ein';
+}
+function clearDraft(){ draft = []; if (draftLine){ draftLine.remove(); draftDots.remove(); draftLine = draftDots = null; } }
+function finishDraft(){
+  if (draft.length < 2){ toast('Mindestens 2 Punkte setzen'); return; }
+  const it = {id:uid(), kind:'leitung', name:nextName('leitung'), f:{art:'Erdkabel'}, note:'', pts:draft.slice()};
+  items.push(it); clearDraft(); save(); render(it); drawDraft(); openSheet(it, true);
+}
+
+/* ---------- Verschieben ---------- */
+let moveCtx = null;
+function startMove(it){
+  closeSheet();
+  if (!map.hasLayer(groups[it.kind])) map.addLayer(groups[it.kind]);
+  moveCtx = {it, orig: JSON.stringify(it.kind === 'leitung' ? it.pts : it.pt), handles:[]};
+  setMode('move');
+  const o = layers.get(it.id);
+  if (it.kind !== 'leitung'){
+    o.lay.dragging.enable();
+    o.lay.on('dragend', () => { const q = o.lay.getLatLng(); it.pt = [q.lat, q.lng]; });
+  } else {
+    const hIcon = L.divIcon({className:'', html:'<div class="hdl"></div>', iconSize:[26,26], iconAnchor:[13,13]});
+    it.pts.forEach((p, i) => {
+      const h = L.marker(p, {icon:hIcon, draggable:true}).addTo(map);
+      h.on('drag', () => { const q = h.getLatLng(); it.pts[i] = [q.lat, q.lng]; o.lay.eachLayer(l => l.setLatLngs(it.pts)); });
+      moveCtx.handles.push(h);
+    });
+  }
+}
+function endMove(){
+  if (!moveCtx) return;
+  moveCtx.handles.forEach(h => h.remove());
+  const it = moveCtx.it; moveCtx = null;
+  save(); render(it); setMode('view'); toast('Position gespeichert');
+}
+function cancelMove(){
+  if (!moveCtx) return;
+  moveCtx.handles.forEach(h => h.remove());
+  const it = moveCtx.it;
+  if (it.kind === 'leitung') it.pts = JSON.parse(moveCtx.orig); else it.pt = JSON.parse(moveCtx.orig);
+  moveCtx = null; render(it); setMode('view');
+}
+
+$('#bUndo').addEventListener('click', () => { draft.pop(); drawDraft(); });
+$('#bDone').addEventListener('click', () => { if (mode === 'leitung') finishDraft(); else if (mode === 'move') endMove(); });
+$('#bCancel').addEventListener('click', () => { if (mode === 'move') cancelMove(); else setMode('view'); });
+
+/* ---------- Bearbeiten ---------- */
+let cur = null;
+function openSheet(it, isNew){
+  cur = it;
+  $('#shTitle').textContent = (isNew ? 'Neu: ' : '') + KINDS[it.kind].label;
+  let h = `<label>Bezeichnung<input id="f_name" value="${esc(it.name)}" autocomplete="off"></label>`;
+  for (const [k, lab, opts] of FIELDS[it.kind]){
+    h += opts
+      ? `<label>${lab}<select id="f_${k}">${opts.map(o => `<option${(it.f[k] || opts[0]) === o ? ' selected' : ''}>${o}</option>`).join('')}</select></label>`
+      : `<label>${lab}<input id="f_${k}" value="${esc(it.f[k])}" autocomplete="off"></label>`;
+  }
+  h += `<label>Notiz<textarea id="f_note" rows="2">${esc(it.note)}</textarea></label>`;
+  h += it.kind === 'leitung'
+    ? `<p class="meta">Länge: <b>${fmtLen(len(it.pts))}</b> (gerade Strecken zwischen ${it.pts.length} Punkten, ohne Zuschlag)</p>`
+    : `<p class="meta">Koordinaten: ${it.pt[0].toFixed(6)}, ${it.pt[1].toFixed(6)}</p>`;
+  $('#shBody').innerHTML = h;
+  const d = $('#shDel'); d.classList.remove('arm'); d.textContent = 'Löschen';
+  $('#sheet').hidden = false;
+}
+function readSheet(){
+  if (!cur) return;
+  cur.name = $('#f_name').value.trim() || cur.name;
+  for (const [k] of FIELDS[cur.kind]) cur.f[k] = $('#f_' + k).value.trim();
+  cur.note = $('#f_note').value.trim();
+  save(); render(cur);
+}
+function closeSheet(){ if (cur && !$('#sheet').hidden) readSheet(); $('#sheet').hidden = true; cur = null; }
+$('#shSave').addEventListener('click', () => { closeSheet(); toast('Gespeichert'); });
+$('#shClose').addEventListener('click', closeSheet);
+$('#shMove').addEventListener('click', () => { const it = cur; readSheet(); startMove(it); });
+$('#shDel').addEventListener('click', () => {
+  const d = $('#shDel');
+  if (!d.classList.contains('arm')){ d.classList.add('arm'); d.textContent = 'Wirklich löschen? Nochmal tippen'; return; }
+  const id = cur.id; items = items.filter(i => i.id !== id); unrender(id); save();
+  $('#sheet').hidden = true; cur = null; toast('Gelöscht');
+});
+
+/* ---------- Menü ---------- */
+function openMenu(){ closeSheet(); buildVis(); buildList(); $('#menu').hidden = false; }
+$('#menuBtn').addEventListener('click', openMenu);
+$('#mClose').addEventListener('click', () => { $('#menu').hidden = true; });
+
+function buildVis(){
+  $('#vis').innerHTML = Object.entries(KINDS).map(([k, v]) =>
+    `<label class="chk"><input type="checkbox" data-k="${k}"${map.hasLayer(groups[k]) ? ' checked' : ''}> ${v.label} (${items.filter(i => i.kind === k).length})</label>`).join('');
+  $('#vis').querySelectorAll('input').forEach(c => c.addEventListener('change', () => {
+    c.checked ? map.addLayer(groups[c.dataset.k]) : map.removeLayer(groups[c.dataset.k]);
+  }));
+  $('#lblT').checked = showLabels;
+}
+$('#lblT').addEventListener('change', e => { showLabels = e.target.checked; ls.set(LKEY, showLabels); renderAll(); });
+
+function buildList(){
+  const q = $('#q').value.trim().toLowerCase();
+  const order = {verteiler:0, leitung:1, leuchte:2, muffe:3};
+  const res = items.filter(i => !q || [i.name, i.note, ...Object.values(i.f)].join(' ').toLowerCase().includes(q))
+    .sort((a, b) => order[a.kind] - order[b.kind] || String(a.name).localeCompare(String(b.name), 'de', {numeric:true}));
+  const ul = $('#list');
+  if (!res.length){ ul.innerHTML = `<li class="empty">${items.length ? 'Nichts gefunden.' : 'Noch keine Einträge. Wähle unten ein Werkzeug und tippe auf die Karte.'}</li>`; return; }
+  ul.innerHTML = res.map(i => {
+    const sw = i.kind === 'leitung'
+      ? `<svg width="26" height="14"><path d="M2 7h22" stroke="${COLORS[i.f.art] || COLORS.Erdkabel}" stroke-width="5"/></svg>`
+      : `<span class="ico ${i.kind}" style="width:18px;height:18px${i.kind === 'muffe' ? ';width:13px;height:13px' : ''}"></span>`;
+    const det = i.kind === 'leitung' ? [i.f.kabel, fmtLen(len(i.pts))].filter(Boolean).join(' · ')
+      : Object.values(i.f).filter(Boolean).join(' · ');
+    return `<li data-id="${esc(i.id)}">${sw}<div>${esc(i.name)}<small>${esc(det || KINDS[i.kind].label)}</small></div></li>`;
+  }).join('');
+}
+$('#q').addEventListener('input', buildList);
+$('#list').addEventListener('click', e => {
+  const li = e.target.closest('li[data-id]'); if (!li) return;
+  const it = items.find(i => i.id === li.dataset.id); if (!it) return;
+  $('#menu').hidden = true;
+  if (!map.hasLayer(groups[it.kind])) map.addLayer(groups[it.kind]);
+  if (it.kind === 'leitung') map.fitBounds(L.latLngBounds(it.pts), {padding:[60, 60], maxZoom:19});
+  else map.setView(it.pt, Math.max(map.getZoom(), 18));
+  openSheet(it, false);
+});
+
+/* ---------- Export / Import ---------- */
+function toGeo(){
+  return {type:'FeatureCollection', features: items.map(it => ({
+    type:'Feature',
+    properties:{id:it.id, kind:it.kind, name:it.name, note:it.note, ...it.f, ...(it.kind === 'leitung' ? {laenge_m:Math.round(len(it.pts))} : {})},
+    geometry: it.kind === 'leitung'
+      ? {type:'LineString', coordinates: it.pts.map(p => [+p[1].toFixed(7), +p[0].toFixed(7)])}
+      : {type:'Point', coordinates:[+it.pt[1].toFixed(7), +it.pt[0].toFixed(7)]}
+  }))};
+}
+$('#exp').addEventListener('click', async () => {
+  if (!items.length){ toast('Noch nichts zum Exportieren'); return; }
+  const name = `strassenbeleuchtung-bakum-${new Date().toISOString().slice(0, 10)}.geojson`;
+  const blob = new Blob([JSON.stringify(toGeo(), null, 1)], {type:'application/json'});
+  try {
+    const file = new File([blob], name, {type:'application/json'});
+    if (navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:name}); return; }
+  } catch(e){ if (e && e.name === 'AbortError') return; }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  toast('Datei gespeichert: ' + name);
+});
+$('#imp').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  try {
+    const gj = JSON.parse(await f.text());
+    const feats = gj.type === 'FeatureCollection' ? gj.features : [];
+    let n = 0;
+    for (const ft of feats){
+      const p = ft.properties || {}, g = ft.geometry || {};
+      if (!KINDS[p.kind]) continue;
+      const {id, kind, name, note, laenge_m, ...rest} = p;
+      const fobj = {}; for (const k in rest) fobj[k] = String(rest[k] ?? '');
+      const it = {id: String(id || uid()), kind, name: String(name || nextName(kind)), note: String(note || ''), f: fobj};
+      if (kind === 'leitung' && g.type === 'LineString') it.pts = g.coordinates.map(c => [+c[1], +c[0]]);
+      else if (kind !== 'leitung' && g.type === 'Point') it.pt = [+g.coordinates[1], +g.coordinates[0]];
+      else continue;
+      const idx = items.findIndex(i => i.id === it.id);
+      if (idx >= 0){ items[idx] = it; } else items.push(it);
+      render(it); n++;
+    }
+    save(); buildVis(); buildList();
+    toast(n ? `${n} Objekte importiert` : 'Keine passenden Objekte in der Datei');
+  } catch(err){ toast('Datei konnte nicht gelesen werden'); }
+});
+$('#osmLoad').addEventListener('click', async () => {
+  const b = $('#osmLoad'); if (b.disabled) return;
+  const label = b.textContent; b.disabled = true; b.textContent = 'Lade aus OpenStreetMap …';
+  const bb = '52.66,8.06,52.80,8.32';
+  const q = `[out:json][timeout:90];(node["highway"="street_lamp"](${bb});node["man_made"="street_cabinet"]["street_cabinet"~"power|lighting"](${bb}););out body;`;
+  const urls = ['https://overpass-api.de/api/interpreter', 'https://overpass.kumi.systems/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter'];
+  let data = null;
+  for (const u of urls){
+    try {
+      const r = await fetch(u, {method:'POST', body:'data=' + encodeURIComponent(q), headers:{'Content-Type':'application/x-www-form-urlencoded'}});
+      if (r.ok){ data = await r.json(); break; }
+    } catch(e){}
+  }
+  b.disabled = false; b.textContent = label;
+  if (!data){ toast('OpenStreetMap-Server nicht erreichbar – bitte später nochmal versuchen'); return; }
+  let nL = 0, nV = 0, skip = 0;
+  for (const el of data.elements || []){
+    if (el.type !== 'node') continue;
+    const id = 'osm-n' + el.id;
+    if (items.some(i => i.id === id)){ skip++; continue; }
+    const t = el.tags || {}, isL = t.highway === 'street_lamp', kind = isL ? 'leuchte' : 'verteiler';
+    const f = {};
+    if (isL){
+      f.mast = [t.lamp_mount || t.support, t.height && ('Höhe ' + t.height + ' m')].filter(Boolean).join(', ');
+      f.lampe = [t.lamp_type, t['light:method'], t['light:count'] && (t['light:count'] + '×')].filter(Boolean).join(', ');
+    } else {
+      f.typ = [t.street_cabinet, t.operator].filter(Boolean).join(', ');
+    }
+    const it = {id, kind, name: String(t.ref || t.name || nextName(kind)), f, note: 'Aus OpenStreetMap übernommen', pt: [+el.lat, +el.lon]};
+    items.push(it); render(it); isL ? nL++ : nV++;
+  }
+  save(); buildVis(); buildList();
+  toast(nL || nV
+    ? `${nL} Leuchten und ${nV} Verteiler übernommen` + (skip ? ` (${skip} schon vorhanden)` : '')
+    : (skip ? 'Alles war schon übernommen' : 'In OpenStreetMap sind für Bakum keine Leuchten eingetragen'));
+});
+$('#wipe').addEventListener('click', () => {
+  const b = $('#wipe');
+  if (!b.classList.contains('arm')){ b.classList.add('arm'); b.textContent = 'Wirklich ALLES löschen? Nochmal tippen'; setTimeout(() => { b.classList.remove('arm'); b.textContent = 'Alles löschen'; }, 4000); return; }
+  items.forEach(i => unrender(i.id)); items = []; save(); buildVis(); buildList();
+  b.classList.remove('arm'); b.textContent = 'Alles löschen'; toast('Alles gelöscht');
+});
+
+/* ---------- GPS ---------- */
+let me = null;
+$('#gps').addEventListener('click', () => { toast('Suche Standort …'); map.locate({setView:true, maxZoom:18, enableHighAccuracy:true}); });
+map.on('locationfound', e => {
+  if (me) me.remove();
+  me = L.layerGroup([
+    L.circle(e.latlng, {radius:e.accuracy, color:'#1c7ed6', weight:1, fillOpacity:.1, interactive:false}),
+    L.circleMarker(e.latlng, {radius:8, color:'#fff', weight:3, fillColor:'#1c7ed6', fillOpacity:1, interactive:false})
+  ]).addTo(map);
+  toast(`Standort gefunden (± ${Math.round(e.accuracy)} m)`);
+});
+map.on('locationerror', () => toast('Standort nicht verfügbar – Freigabe im Browser prüfen'));
+
+/* ---------- Als App installieren ---------- */
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+let installEvt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; $('#install').hidden = false; });
+$('#install').addEventListener('click', async () => { if (!installEvt) return; installEvt.prompt(); await installEvt.userChoice; installEvt = null; $('#install').hidden = true; });
+window.addEventListener('appinstalled', () => toast('App installiert – du findest sie bei deinen Apps'));
+
+renderAll(); updateCount();
+if (!items.length) setTimeout(() => toast('Werkzeug unten wählen, dann auf die Karte tippen'), 800);
+}
+</script>
+</body>
+</html>
