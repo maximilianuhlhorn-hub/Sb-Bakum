@@ -73,15 +73,43 @@ h3{font-size:13px;margin:16px 0 6px;color:#495057;font-weight:700}
 #list small{display:block;color:#6c757d;font-size:12px}
 .empty{color:#6c757d;font-size:14px;padding:10px 0}
 .small{font-size:12px;color:#6c757d;margin-top:14px}
-#toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--dark);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:1200;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;text-align:center}
+#toast{position:fixed;left:50%;bottom:calc(170px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--dark);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:1200;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;text-align:center}
 #toast.show{opacity:1}
-@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+/* Status / Fehler */
+#errBtn{background:var(--red);color:#fff;font-weight:700;font-size:13px;min-height:36px;padding:0 10px;border-radius:18px;white-space:nowrap}
+#errBtn[hidden]{display:none}
+.ico.st-stoerung{box-shadow:0 0 0 3px #fff,0 0 0 6px var(--red);animation:pulseR 1.4s infinite}
+.ico.st-arbeit{box-shadow:0 0 0 3px #fff,0 0 0 6px #f08c00}
+.ico.st-behoben{box-shadow:0 0 0 3px #fff,0 0 0 6px #2f9e44}
+.ico.leuchte.st-stoerung{background:radial-gradient(circle,#fff 0 3px,var(--red) 4px)}
+.ico.leuchte.st-arbeit{background:radial-gradient(circle,#fff 0 3px,#f08c00 4px)}
+.ico.leuchte.st-behoben{background:radial-gradient(circle,#fff 0 3px,#2f9e44 4px)}
+.ico.verteiler.st-stoerung{background:var(--red)}
+.ico.verteiler.st-arbeit{background:#f08c00}
+.ico.verteiler.st-behoben{background:#2f9e44}
+.ftri{display:block;overflow:visible}
+.ftri.pulse{animation:pulseT 1.2s infinite;transform-origin:50% 60%}
+@keyframes pulseR{50%{box-shadow:0 0 0 3px #fff,0 0 0 11px rgba(224,49,49,.4)}}
+@keyframes pulseT{50%{transform:scale(1.2)}}
+.seg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin:2px 0 10px}
+.seg button{font-size:13px;min-height:44px;padding:0 4px;background:#f1f3f5;border:2px solid transparent;line-height:1.1}
+.seg button.on{background:var(--c);color:#fff;font-weight:700}
+.sw{width:30px;display:flex;justify-content:center;align-items:center;flex:none;transform:scale(.85)}
+#list li.open{background:#fff5f5}
+/* Sicherungs-Erinnerung */
+#bk{position:absolute;left:8px;right:66px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:850;background:#fff;border-left:6px solid var(--acc);border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.3);padding:8px 8px 8px 12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+#bk[hidden]{display:none}
+#bkTxt{flex:1 1 150px;font-size:14px}
+#bk button{min-height:40px;padding:0 12px}
+@media (max-width:420px){header h1 .long{display:none}}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}.ico.st-stoerung,.ftri.pulse{animation:none}}
 </style>
 </head>
 <body>
 <header>
-  <h1>Straßenbeleuchtung <span>Bakum</span></h1>
+  <h1><span class="long" style="color:#fff">Straßenbeleuchtung </span><span>Bakum</span></h1>
   <span id="count"></span>
+  <button id="errBtn" hidden></button>
   <button id="menuBtn" aria-label="Übersicht und Einstellungen">☰</button>
 </header>
 
@@ -104,7 +132,14 @@ h3{font-size:13px;margin:16px 0 6px;color:#495057;font-weight:700}
   <button data-mode="verteiler"><span class="ti"><span class="ico verteiler" style="width:18px;height:18px"></span></span>Verteiler</button>
   <button data-mode="muffe"><span class="ti"><span class="ico muffe" style="width:13px;height:13px"></span></span>Muffe</button>
   <button data-mode="leitung"><span class="ti"><svg width="26" height="20" viewBox="0 0 26 20"><path d="M2 16L10 6l7 7 7-10" fill="none" stroke="#e8590c" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Leitung</button>
+  <button data-mode="fehler"><span class="ti"><svg width="24" height="22" viewBox="0 0 28 26"><path d="M14 2L27 24H1z" fill="#e03131" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/><path d="M14 9v7" stroke="#fff" stroke-width="3" stroke-linecap="round"/><circle cx="14" cy="20" r="1.8" fill="#fff"/></svg></span>Fehler</button>
 </nav>
+
+<div id="bk" hidden>
+  <span id="bkTxt"></span>
+  <button id="bkLater">Später</button>
+  <button id="bkNow" class="prim">Jetzt sichern</button>
+</div>
 
 <section id="sheet" class="panel" hidden>
   <div class="ph"><b id="shTitle"></b><button id="shClose" aria-label="Schließen">✕</button></div>
@@ -124,6 +159,7 @@ h3{font-size:13px;margin:16px 0 6px;color:#495057;font-weight:700}
     <h3>Anzeigen</h3>
     <div id="vis"></div>
     <label class="chk"><input type="checkbox" id="lblT"> Beschriftungen immer anzeigen</label>
+    <label class="chk"><input type="checkbox" id="onlyErr"> Nur offene Fehler (Störung / In Arbeit)</label>
     <h3>Objekte</h3>
     <input id="q" type="search" placeholder="Suchen: Name, Kabel, Notiz …">
     <ul id="list"></ul>
@@ -136,6 +172,7 @@ h3{font-size:13px;margin:16px 0 6px;color:#495057;font-weight:700}
       <button id="exp">Exportieren</button>
       <label class="btn">Importieren<input type="file" id="imp" accept=".geojson,.json,application/json,application/geo+json" hidden></label>
     </div>
+    <p class="small" id="bkInfo" style="font-weight:700;color:var(--ink)"></p>
     <p class="small">Die Einträge werden nur auf diesem Gerät im Browser gespeichert. Exportiere regelmäßig eine Sicherung (GeoJSON-Datei). Die Datei kannst du an Kollegen schicken, die sie hier importieren, oder in QGIS öffnen.</p>
     <div class="row" style="margin-top:14px"><button id="wipe" class="danger">Alles löschen</button></div>
     <p class="small">Karte: © OpenStreetMap-Mitwirkende · Luftbild: © Esri</p>
@@ -157,13 +194,26 @@ const KINDS = {
   leuchte:   {label:'Leuchte',   pre:'L'},
   verteiler: {label:'Verteiler', pre:'V'},
   muffe:     {label:'Muffe',     pre:'M'},
-  leitung:   {label:'Leitung',   pre:'K'}
+  leitung:   {label:'Leitung',   pre:'K'},
+  fehler:    {label:'Fehlerstelle', pre:'F'}
 };
+const ST = {
+  ok:       {l:'In Ordnung', c:'#495057'},
+  stoerung: {l:'Störung',    c:'#e03131'},
+  arbeit:   {l:'In Arbeit',  c:'#f08c00'},
+  behoben:  {l:'Behoben',    c:'#2f9e44'}
+};
+const stOf = it => (it.st && ST[it.st]) ? it.st : 'ok';
+const isOpen = it => it.st === 'stoerung' || it.st === 'arbeit';
+const today = () => new Date().toISOString().slice(0, 10);
+const fmtDate = d => d ? d.split('-').reverse().join('.') : '';
+let onlyErr = false;
 const FIELDS = {
   leuchte:   [['mast','Mast / Lichtpunkthöhe'], ['lampe','Leuchte / Leuchtmittel / Watt'], ['strang','Stromkreis / Abgang']],
   verteiler: [['typ','Typ / Standort'], ['abg','Abgänge / Sicherungen'], ['zaehler','Zähler-Nr.']],
   muffe:     [['art','Muffenart (Verbindung, Abzweig …)'], ['tiefe','Tiefe (cm)']],
-  leitung:   [['kabel','Kabeltyp (z. B. NYY-J 4×16)'], ['art','Verlegung', ['Erdkabel','Leerrohr','Freileitung']], ['strang','Stromkreis / Abgang']]
+  leitung:   [['kabel','Kabeltyp (z. B. NYY-J 4×16)'], ['art','Verlegung', ['Erdkabel','Leerrohr','Freileitung']], ['strang','Stromkreis / Abgang']],
+  fehler:    [['art','Fehlerart', ['Kabelfehler','Leuchte aus','Mast beschädigt','Verteiler defekt','Tiefbau / Aufgrabung','Sonstiges']]]
 };
 const COLORS = {Erdkabel:'#e8590c', Leerrohr:'#7048e8', Freileitung:'#1c7ed6'};
 
@@ -182,7 +232,13 @@ function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add
 let items = ls.get(KEY, []);
 if (!Array.isArray(items)) items = [];
 let showLabels = ls.get(LKEY, true);
-function save(){ if (!ls.set(KEY, items)) toast('Speichern im Browser nicht möglich – bitte exportieren!'); updateCount(); }
+const EKEY = 'bakum-sb-export', CKEY = 'bakum-sb-changes', SKEY = 'bakum-sb-snooze';
+let changes = ls.get(CKEY, 0);
+function save(){
+  if (!ls.set(KEY, items)) toast('Speichern im Browser nicht möglich – bitte exportieren!');
+  changes++; ls.set(CKEY, changes);
+  updateCount();
+}
 
 /* ---------- Karte ---------- */
 const view = ls.get(VKEY, {c:[52.7406, 8.1931], z:15});
@@ -218,23 +274,41 @@ const groups = {};
 for (const k in KINDS) groups[k] = L.layerGroup().addTo(map);
 const layers = new Map();
 
-function icon(kind){ return L.divIcon({className:'', html:`<div class="ico ${kind}"></div>`, iconSize:[30,30], iconAnchor:[15,15]}); }
-function labelOf(it){ return it.name + (it.kind === 'leitung' && it.f.kabel ? ' · ' + it.f.kabel : ''); }
+function iconHtml(it){
+  const st = stOf(it);
+  if (it.kind === 'fehler'){
+    const c = st === 'ok' ? ST.stoerung.c : ST[st].c;
+    return `<svg class="ftri${st === 'stoerung' ? ' pulse' : ''}" width="28" height="26" viewBox="0 0 28 26"><path d="M14 2L27 24H1z" fill="${c}" stroke="#1d2a36" stroke-width="2" stroke-linejoin="round"/><path d="M14 9v7" stroke="#fff" stroke-width="3" stroke-linecap="round"/><circle cx="14" cy="20" r="1.8" fill="#fff"/></svg>`;
+  }
+  if (it.kind === 'leitung'){
+    const col = COLORS[it.f.art] || COLORS.Erdkabel;
+    return `<svg width="26" height="14"><path d="M2 7h22" stroke="${st !== 'ok' ? ST[st].c : col}" stroke-width="${st !== 'ok' ? 9 : 5}" stroke-opacity="${st !== 'ok' ? .5 : 1}"/><path d="M2 7h22" stroke="${col}" stroke-width="4"/></svg>`;
+  }
+  return `<div class="ico ${it.kind}${st !== 'ok' ? ' st-' + st : ''}"></div>`;
+}
+function icon(it){ return L.divIcon({className:'', html:iconHtml(it), iconSize:[30,30], iconAnchor:[15,15]}); }
+function labelOf(it){
+  const st = stOf(it);
+  return it.name + (it.kind === 'leitung' && it.f.kabel ? ' · ' + it.f.kabel : '') + (st !== 'ok' ? ' · ' + ST[st].l : '');
+}
 
 function unrender(id){ const o = layers.get(id); if (o){ groups[o.kind].removeLayer(o.lay); layers.delete(id); } }
 function render(it){
   unrender(it.id);
+  if (onlyErr && !isOpen(it)) return;
   let lay;
   const tt = {permanent:showLabels, className:'lbl'};
   if (it.kind === 'leitung'){
-    const art = it.f.art || 'Erdkabel';
-    const vis = L.polyline(it.pts, {color:COLORS[art] || COLORS.Erdkabel, weight:5, opacity:.95, dashArray: art === 'Leerrohr' ? '10 7' : null, interactive:false});
+    const art = it.f.art || 'Erdkabel', st = stOf(it), parts = [];
+    if (st !== 'ok') parts.push(L.polyline(it.pts, {color:ST[st].c, weight:18, opacity:.45, interactive:false}));
+    parts.push(L.polyline(it.pts, {color:COLORS[art] || COLORS.Erdkabel, weight:5, opacity:.95, dashArray: art === 'Leerrohr' ? '10 7' : null, interactive:false}));
     const hit = L.polyline(it.pts, {weight:24, opacity:0, bubblingMouseEvents:false});
     hit.bindTooltip(esc(labelOf(it)), {...tt, direction:'center', sticky:false});
     hit.on('click', e => onItemTap(it, [e.latlng.lat, e.latlng.lng]));
-    lay = L.featureGroup([vis, hit]);
+    parts.push(hit);
+    lay = L.featureGroup(parts);
   } else {
-    lay = L.marker(it.pt, {icon:icon(it.kind)});
+    lay = L.marker(it.pt, {icon:icon(it), zIndexOffset: isOpen(it) ? 1000 : 0});
     lay.bindTooltip(esc(labelOf(it)), {...tt, direction:'right', offset:[12, 0]});
     lay.on('click', () => onItemTap(it, it.pt));
   }
@@ -247,6 +321,9 @@ function updateCount(){
   const n = k => items.filter(i => i.kind === k).length;
   const m = items.filter(i => i.kind === 'leitung').reduce((s, i) => s + len(i.pts), 0);
   $('#count').textContent = `${n('leuchte')} L · ${n('verteiler')} V · ${fmtLen(m)}`;
+  const open = items.filter(isOpen).length;
+  $('#errBtn').hidden = !open;
+  $('#errBtn').textContent = `${open} offen`;
 }
 
 function nextName(kind){
@@ -271,6 +348,7 @@ function setMode(m){
   $('#bCancel').textContent = m === 'move' ? 'Abbrechen' : (m === 'leitung' ? 'Abbrechen' : 'Beenden');
   if (m === 'leitung') drawDraft();
   else if (m === 'move') $('#barTxt').textContent = 'Symbol bzw. Punkte ziehen, dann „Fertig“';
+  else if (m === 'fehler') $('#barTxt').textContent = 'Auf Leuchte, Verteiler oder Leitung tippen = Störung markieren. Auf freie Stelle tippen = neue Fehlerstelle.';
   else $('#barTxt').textContent = `Auf die Karte tippen, um eine ${KINDS[m].label} zu setzen`;
 }
 document.querySelectorAll('#tools button').forEach(b => b.addEventListener('click', () => {
@@ -284,6 +362,7 @@ map.on('click', e => {
   if (mode === 'leitung'){ addDraft(p); return; }
   if (KINDS[mode] && mode !== 'leitung'){
     const it = {id:uid(), kind:mode, name:nextName(mode), f:{}, note:'', pt:p};
+    if (mode === 'fehler'){ it.st = 'stoerung'; it.stDate = today(); }
     items.push(it); save(); render(it); openSheet(it, true);
   }
 });
@@ -291,6 +370,10 @@ map.on('click', e => {
 function onItemTap(it, p){
   if (mode === 'leitung'){ addDraft(p); return; } // einrasten
   if (mode === 'move') return;
+  if (mode === 'fehler' && !isOpen(it)){
+    it.st = 'stoerung'; it.stDate = today(); save(); render(it);
+    toast(`${it.name} als Störung markiert`);
+  }
   openSheet(it, false);
 }
 
@@ -355,11 +438,18 @@ $('#bDone').addEventListener('click', () => { if (mode === 'leitung') finishDraf
 $('#bCancel').addEventListener('click', () => { if (mode === 'move') cancelMove(); else setMode('view'); });
 
 /* ---------- Bearbeiten ---------- */
-let cur = null;
+let cur = null, sheetSt = 'ok';
+function stUi(){
+  $('#shBody').querySelectorAll('[data-st]').forEach(b => b.classList.toggle('on', b.dataset.st === sheetSt));
+  const w = $('#errWrap'); if (w) w.hidden = sheetSt === 'ok' && cur.kind !== 'fehler';
+}
 function openSheet(it, isNew){
-  cur = it;
+  cur = it; sheetSt = stOf(it);
   $('#shTitle').textContent = (isNew ? 'Neu: ' : '') + KINDS[it.kind].label;
-  let h = `<label>Bezeichnung<input id="f_name" value="${esc(it.name)}" autocomplete="off"></label>`;
+  let h = `<div class="seg">${Object.entries(ST).map(([k, v]) => `<button type="button" data-st="${k}" style="--c:${v.c}">${v.l}</button>`).join('')}</div>`;
+  if (it.st && it.stDate) h += `<p class="meta" style="margin-top:-4px">${ST[stOf(it)].l} seit ${fmtDate(it.stDate)}</p>`;
+  h += `<label id="errWrap">Fehlerbeschreibung<textarea id="f_err" rows="2" placeholder="z. B. Leuchte dunkel, Sicherung ausgelöst …">${esc(it.err)}</textarea></label>`;
+  h += `<label>Bezeichnung<input id="f_name" value="${esc(it.name)}" autocomplete="off"></label>`;
   for (const [k, lab, opts] of FIELDS[it.kind]){
     h += opts
       ? `<label>${lab}<select id="f_${k}">${opts.map(o => `<option${(it.f[k] || opts[0]) === o ? ' selected' : ''}>${o}</option>`).join('')}</select></label>`
@@ -370,6 +460,7 @@ function openSheet(it, isNew){
     ? `<p class="meta">Länge: <b>${fmtLen(len(it.pts))}</b> (gerade Strecken zwischen ${it.pts.length} Punkten, ohne Zuschlag)</p>`
     : `<p class="meta">Koordinaten: ${it.pt[0].toFixed(6)}, ${it.pt[1].toFixed(6)}</p>`;
   $('#shBody').innerHTML = h;
+  stUi();
   const d = $('#shDel'); d.classList.remove('arm'); d.textContent = 'Löschen';
   $('#sheet').hidden = false;
 }
@@ -378,8 +469,14 @@ function readSheet(){
   cur.name = $('#f_name').value.trim() || cur.name;
   for (const [k] of FIELDS[cur.kind]) cur.f[k] = $('#f_' + k).value.trim();
   cur.note = $('#f_note').value.trim();
+  cur.err = $('#f_err').value.trim();
+  if (sheetSt !== stOf(cur)){ cur.st = sheetSt === 'ok' ? '' : sheetSt; cur.stDate = today(); }
   save(); render(cur);
 }
+$('#shBody').addEventListener('click', e => {
+  const b = e.target.closest('[data-st]'); if (!b) return;
+  sheetSt = b.dataset.st; stUi();
+});
 function closeSheet(){ if (cur && !$('#sheet').hidden) readSheet(); $('#sheet').hidden = true; cur = null; }
 $('#shSave').addEventListener('click', () => { closeSheet(); toast('Gespeichert'); });
 $('#shClose').addEventListener('click', closeSheet);
@@ -392,7 +489,15 @@ $('#shDel').addEventListener('click', () => {
 });
 
 /* ---------- Menü ---------- */
-function openMenu(){ closeSheet(); buildVis(); buildList(); $('#menu').hidden = false; }
+function openMenu(){ closeSheet(); buildVis(); buildList(); bkInfo(); $('#menu').hidden = false; }
+$('#onlyErr').addEventListener('change', e => { onlyErr = e.target.checked; renderAll(); buildList(); });
+$('#errBtn').addEventListener('click', () => {
+  onlyErr = true; $('#onlyErr').checked = true; renderAll();
+  const open = items.filter(isOpen);
+  const pts = open.flatMap(i => i.kind === 'leitung' ? i.pts : [i.pt]);
+  if (pts.length) map.fitBounds(L.latLngBounds(pts), {padding:[60, 60], maxZoom:18});
+  openMenu();
+});
 $('#menuBtn').addEventListener('click', openMenu);
 $('#mClose').addEventListener('click', () => { $('#menu').hidden = true; });
 
@@ -403,24 +508,26 @@ function buildVis(){
     c.checked ? map.addLayer(groups[c.dataset.k]) : map.removeLayer(groups[c.dataset.k]);
   }));
   $('#lblT').checked = showLabels;
+  $('#onlyErr').checked = onlyErr;
 }
 $('#lblT').addEventListener('change', e => { showLabels = e.target.checked; ls.set(LKEY, showLabels); renderAll(); });
 
 function buildList(){
   const q = $('#q').value.trim().toLowerCase();
-  const order = {verteiler:0, leitung:1, leuchte:2, muffe:3};
-  const res = items.filter(i => !q || [i.name, i.note, ...Object.values(i.f)].join(' ').toLowerCase().includes(q))
-    .sort((a, b) => order[a.kind] - order[b.kind] || String(a.name).localeCompare(String(b.name), 'de', {numeric:true}));
+  const order = {fehler:0, verteiler:1, leitung:2, leuchte:3, muffe:4};
+  const prio = i => i.st === 'stoerung' ? 0 : i.st === 'arbeit' ? 1 : 2;
+  const res = items.filter(i => (!onlyErr || isOpen(i)) && (!q || [i.name, i.note, i.err, ST[stOf(i)].l, ...Object.values(i.f)].join(' ').toLowerCase().includes(q)))
+    .sort((a, b) => prio(a) - prio(b) || order[a.kind] - order[b.kind] || String(a.name).localeCompare(String(b.name), 'de', {numeric:true}));
   const ul = $('#list');
-  if (!res.length){ ul.innerHTML = `<li class="empty">${items.length ? 'Nichts gefunden.' : 'Noch keine Einträge. Wähle unten ein Werkzeug und tippe auf die Karte.'}</li>`; return; }
-  ul.innerHTML = res.map(i => {
-    const sw = i.kind === 'leitung'
-      ? `<svg width="26" height="14"><path d="M2 7h22" stroke="${COLORS[i.f.art] || COLORS.Erdkabel}" stroke-width="5"/></svg>`
-      : `<span class="ico ${i.kind}" style="width:18px;height:18px${i.kind === 'muffe' ? ';width:13px;height:13px' : ''}"></span>`;
-    const det = i.kind === 'leitung' ? [i.f.kabel, fmtLen(len(i.pts))].filter(Boolean).join(' · ')
+  if (!res.length){ ul.innerHTML = `<li class="empty">${onlyErr ? 'Keine offenen Fehler.' : items.length ? 'Nichts gefunden.' : 'Noch keine Einträge. Wähle unten ein Werkzeug und tippe auf die Karte.'}</li>`; return; }
+  ul.innerHTML = res.slice(0, 300).map(i => {
+    const st = stOf(i);
+    const det = st !== 'ok'
+      ? [ST[st].l + (i.stDate ? ' seit ' + fmtDate(i.stDate) : ''), i.err].filter(Boolean).join(' · ')
+      : i.kind === 'leitung' ? [i.f.kabel, fmtLen(len(i.pts))].filter(Boolean).join(' · ')
       : Object.values(i.f).filter(Boolean).join(' · ');
-    return `<li data-id="${esc(i.id)}">${sw}<div>${esc(i.name)}<small>${esc(det || KINDS[i.kind].label)}</small></div></li>`;
-  }).join('');
+    return `<li data-id="${esc(i.id)}"${isOpen(i) ? ' class="open"' : ''}><span class="sw">${iconHtml(i)}</span><div>${esc(i.name)}<small>${esc(det || KINDS[i.kind].label)}</small></div></li>`;
+  }).join('') + (res.length > 300 ? `<li class="empty">… und ${res.length - 300} weitere – Suche eingrenzen</li>` : '');
 }
 $('#q').addEventListener('input', buildList);
 $('#list').addEventListener('click', e => {
@@ -437,26 +544,51 @@ $('#list').addEventListener('click', e => {
 function toGeo(){
   return {type:'FeatureCollection', features: items.map(it => ({
     type:'Feature',
-    properties:{id:it.id, kind:it.kind, name:it.name, note:it.note, ...it.f, ...(it.kind === 'leitung' ? {laenge_m:Math.round(len(it.pts))} : {})},
+    properties:{id:it.id, kind:it.kind, name:it.name, note:it.note, ...it.f,
+      status: stOf(it), status_seit: it.stDate || '', fehler: it.err || '',
+      ...(it.kind === 'leitung' ? {laenge_m:Math.round(len(it.pts))} : {})},
     geometry: it.kind === 'leitung'
       ? {type:'LineString', coordinates: it.pts.map(p => [+p[1].toFixed(7), +p[0].toFixed(7)])}
       : {type:'Point', coordinates:[+it.pt[1].toFixed(7), +it.pt[0].toFixed(7)]}
   }))};
 }
-$('#exp').addEventListener('click', async () => {
+async function doExport(){
   if (!items.length){ toast('Noch nichts zum Exportieren'); return; }
-  const name = `strassenbeleuchtung-bakum-${new Date().toISOString().slice(0, 10)}.geojson`;
+  const name = `strassenbeleuchtung-bakum-${today()}.geojson`;
   const blob = new Blob([JSON.stringify(toGeo(), null, 1)], {type:'application/json'});
   try {
     const file = new File([blob], name, {type:'application/json'});
-    if (navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:name}); return; }
+    if (navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:name}); markExported(); return; }
   } catch(e){ if (e && e.name === 'AbortError') return; }
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = name;
   document.body.appendChild(a); a.click();
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
-  toast('Datei gespeichert: ' + name);
-});
+  markExported();
+  toast('Sicherung gespeichert: ' + name);
+}
+$('#exp').addEventListener('click', doExport);
+
+/* ---------- Sicherungs-Erinnerung ---------- */
+const DAYS = 7;
+function markExported(){ ls.set(EKEY, {t:Date.now(), n:changes}); $('#bk').hidden = true; bkInfo(); }
+function bkInfo(){
+  const e = ls.get(EKEY, null);
+  $('#bkInfo').textContent = e
+    ? `Letzte Sicherung: ${new Date(e.t).toLocaleDateString('de-DE')} (vor ${Math.floor((Date.now() - e.t) / 864e5)} Tagen)`
+    : 'Noch keine Sicherung gemacht.';
+}
+function checkBackup(){
+  const e = ls.get(EKEY, null);
+  if (!items.length || (e && changes <= e.n)) return;
+  const days = e ? (Date.now() - e.t) / 864e5 : Infinity;
+  if (days < DAYS || Date.now() < ls.get(SKEY, 0)) return;
+  $('#bkTxt').textContent = e ? `Letzte Sicherung vor ${Math.floor(days)} Tagen` : 'Deine Daten sind noch nicht gesichert';
+  $('#bk').hidden = false;
+}
+$('#bkNow').addEventListener('click', doExport);
+$('#bkLater').addEventListener('click', () => { ls.set(SKEY, Date.now() + 864e5); $('#bk').hidden = true; });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkBackup(); });
 $('#imp').addEventListener('change', async e => {
   const f = e.target.files[0]; e.target.value = '';
   if (!f) return;
@@ -467,9 +599,10 @@ $('#imp').addEventListener('change', async e => {
     for (const ft of feats){
       const p = ft.properties || {}, g = ft.geometry || {};
       if (!KINDS[p.kind]) continue;
-      const {id, kind, name, note, laenge_m, ...rest} = p;
+      const {id, kind, name, note, laenge_m, status, status_seit, fehler, ...rest} = p;
       const fobj = {}; for (const k in rest) fobj[k] = String(rest[k] ?? '');
-      const it = {id: String(id || uid()), kind, name: String(name || nextName(kind)), note: String(note || ''), f: fobj};
+      const it = {id: String(id || uid()), kind, name: String(name || nextName(kind)), note: String(note || ''), f: fobj,
+        st: ST[status] && status !== 'ok' ? status : '', stDate: String(status_seit || ''), err: String(fehler || '')};
       if (kind === 'leitung' && g.type === 'LineString') it.pts = g.coordinates.map(c => [+c[1], +c[0]]);
       else if (kind !== 'leitung' && g.type === 'Point') it.pt = [+g.coordinates[1], +g.coordinates[0]];
       else continue;
@@ -545,6 +678,7 @@ $('#install').addEventListener('click', async () => { if (!installEvt) return; i
 window.addEventListener('appinstalled', () => toast('App installiert – du findest sie bei deinen Apps'));
 
 renderAll(); updateCount();
+setTimeout(checkBackup, 1500);
 if (!items.length) setTimeout(() => toast('Werkzeug unten wählen, dann auf die Karte tippen'), 800);
 }
 </script>
