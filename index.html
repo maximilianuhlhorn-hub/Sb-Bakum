@@ -78,6 +78,7 @@ h3{font-size:13px;margin:16px 0 6px;color:#495057;font-weight:700}
 /* Status / Fehler */
 #errBtn{background:var(--red);color:#fff;font-weight:700;font-size:13px;min-height:36px;padding:0 10px;border-radius:18px;white-space:nowrap}
 #errBtn[hidden]{display:none}
+#errBtn.flt{background:#fff;color:var(--red);box-shadow:inset 0 0 0 2px var(--red)}
 .ico.st-stoerung{box-shadow:0 0 0 3px #fff,0 0 0 6px var(--red);animation:pulseR 1.4s infinite}
 .ico.st-arbeit{box-shadow:0 0 0 3px #fff,0 0 0 6px #f08c00}
 .ico.st-behoben{box-shadow:0 0 0 3px #fff,0 0 0 6px #2f9e44}
@@ -322,8 +323,15 @@ function updateCount(){
   const m = items.filter(i => i.kind === 'leitung').reduce((s, i) => s + len(i.pts), 0);
   $('#count').textContent = `${n('leuchte')} L · ${n('verteiler')} V · ${fmtLen(m)}`;
   const open = items.filter(isOpen).length;
-  $('#errBtn').hidden = !open;
-  $('#errBtn').textContent = `${open} offen`;
+  const eb = $('#errBtn');
+  eb.hidden = !open && !onlyErr;
+  eb.classList.toggle('flt', onlyErr);
+  eb.textContent = onlyErr ? 'Alle zeigen' : `${open} offen`;
+}
+function setOnlyErr(v){
+  onlyErr = v; $('#onlyErr').checked = v;
+  renderAll(); updateCount();
+  if (!$('#menu').hidden) buildList();
 }
 
 function nextName(kind){
@@ -354,6 +362,7 @@ function setMode(m){
 document.querySelectorAll('#tools button').forEach(b => b.addEventListener('click', () => {
   if (mode === 'move') cancelMove();
   closeSheet();
+  if (onlyErr && !['view', 'fehler'].includes(b.dataset.mode)) setOnlyErr(false);
   setMode(b.dataset.mode);
 }));
 
@@ -490,11 +499,11 @@ $('#shDel').addEventListener('click', () => {
 
 /* ---------- Menü ---------- */
 function openMenu(){ closeSheet(); buildVis(); buildList(); bkInfo(); $('#menu').hidden = false; }
-$('#onlyErr').addEventListener('change', e => { onlyErr = e.target.checked; renderAll(); buildList(); });
+$('#onlyErr').addEventListener('change', e => setOnlyErr(e.target.checked));
 $('#errBtn').addEventListener('click', () => {
-  onlyErr = true; $('#onlyErr').checked = true; renderAll();
-  const open = items.filter(isOpen);
-  const pts = open.flatMap(i => i.kind === 'leitung' ? i.pts : [i.pt]);
+  if (onlyErr){ setOnlyErr(false); toast('Alle Objekte werden wieder angezeigt'); return; }
+  setOnlyErr(true);
+  const pts = items.filter(isOpen).flatMap(i => i.kind === 'leitung' ? i.pts : [i.pt]);
   if (pts.length) map.fitBounds(L.latLngBounds(pts), {padding:[60, 60], maxZoom:18});
   openMenu();
 });
